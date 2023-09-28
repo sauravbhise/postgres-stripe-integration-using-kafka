@@ -40,10 +40,6 @@ class Database:
             print(f"Error: {e}")
             return None
 
-    def create_table(self, table_name, columns):
-        query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns});"
-        self.execute_query(query)
-
     def insert_data(self, table_name, columns, values):
         placeholders = ", ".join(["%s"] * len(values))
         query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"

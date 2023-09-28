@@ -35,7 +35,7 @@ def get_customers():
 
 @app.route("/customers/<id>", methods=["GET"])
 def get_customer(id):
-    result = db.select_data("customers", "*", f"id={id}")
+    result = db.select_data("customers", "*", f"id='{id}'")
     customer = result.fetchone()
     if customer:
         return jsonify({"id": customer[0], "name": customer[1], "email": customer[2]})
@@ -46,10 +46,11 @@ def get_customer(id):
 @app.route("/customers", methods=["POST"])
 def create_customer():
     data = request.json
+    id = data["id"]
     name = data["name"]
     email = data["email"]
 
-    db.insert_data("customers", "name, email", (name, email))
+    db.insert_data("customers", "id, name, email", (id, name, email))
     return jsonify({"message": "Customer created successfully"}), 201
 
 
@@ -59,13 +60,13 @@ def update_customer(id):
     name = data["name"]
     email = data["email"]
 
-    db.update_data("customers", f"name='{name}', email='{email}'", f"id={id}")
+    db.update_data("customers", f"name='{name}', email='{email}'", f"id='{id}'")
     return jsonify({"message": "Customer updated successfully"})
 
 
 @app.route("/customers/<id>", methods=["DELETE"])
 def delete_customer(id):
-    db.delete_data("customers", f"id={id}")
+    db.delete_data("customers", f"id='{id}'")
     return jsonify({"message": "Customer deleted successfully"})
 
 

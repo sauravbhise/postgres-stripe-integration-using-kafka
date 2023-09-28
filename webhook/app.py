@@ -1,4 +1,3 @@
-import json
 import os
 import stripe
 from dotenv import load_dotenv

@@ -1,0 +1,10 @@
+avro==1.11.3
+certifi==2023.7.22
+charset-normalizer==3.2.0
+confluent-kafka==2.2.0
+idna==3.4
+python-dotenv==1.0.0
+requests==2.31.0
+stripe==6.6.0
+typing_extensions==4.8.0
+urllib3==2.0.5
