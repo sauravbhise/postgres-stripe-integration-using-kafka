@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from database.app import Database
+from database import Database
 import os
 from dotenv import load_dotenv
 
