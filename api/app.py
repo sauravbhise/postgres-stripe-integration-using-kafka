@@ -1,86 +1,73 @@
-from flask import Flask, request
-from flask_restful import Resource, Api, reqparse
-import psycopg2
-from decouple import config
+from flask import Flask, request, jsonify
+from database.app import Database
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+DATABASE_NAME = os.getenv("DATABASE_NAME")
+DATABASE_USER = os.getenv("DATABASE_USER")
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
+DATABASE_HOST = os.getenv("DATABASE_HOST")
+DATABASE_PORT = os.getenv("DATABASE_PORT")
 
 app = Flask(__name__)
-api = Api(app)
 
-DATABASE_NAME = config("DATABASE_NAME")
-DATABASE_USER = config("DATABASE_USER")
-DATABASE_PASSWORD = config("DATABASE_PASSWORD")
-DATABASE_HOST = config("DATABASE_HOST")
-DATABASE_PORT = config("DATABASE_PORT")
-
-conn = psycopg2.connect(
-    dbname=DATABASE_NAME,
+db = Database(
+    host=DATABASE_HOST,
+    database=DATABASE_NAME,
     user=DATABASE_USER,
     password=DATABASE_PASSWORD,
-    host=DATABASE_HOST,
-    port=DATABASE_PORT,
+    port=5432,
 )
 
-
-class CustomerResource(Resource):
-    def get(self, customer_id):
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM customers WHERE id = %s", (customer_id,))
-        customer = cursor.fetchone()
-        cursor.close()
-        if customer:
-            return {"id": customer[0], "name": customer[1], "email": customer[2]}, 200
-        else:
-            return {"message": "Customer not found"}, 404
-
-    def put(self, customer_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name")
-        parser.add_argument("email")
-        args = parser.parse_args()
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE customers SET name = %s, email = %s WHERE id = %s",
-            (args["name"], args["email"], customer_id),
-        )
-        conn.commit()
-        cursor.close()
-        return {"message": "Customer updated successfully"}, 200
-
-    def delete(self, customer_id):
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM customers WHERE id = %s", (customer_id,))
-        conn.commit()
-        cursor.close()
-        return {"message": "Customer deleted successfully"}, 200
+db.connect()
 
 
-class CustomerListResource(Resource):
-    def get(self):
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM customers")
-        customers = cursor.fetchall()
-        cursor.close()
-        customer_list = [{"id": c[0], "name": c[1], "email": c[2]} for c in customers]
-        return customer_list, 200
-
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", required=True)
-        parser.add_argument("email", required=True)
-        args = parser.parse_args()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO customers (name, email) VALUES (%s, %s)",
-            (args["name"], args["email"]),
-        )
-        conn.commit()
-        cursor.close()
-        return {"message": "Customer created successfully"}, 201
+@app.route("/customers", methods=["GET"])
+def get_customers():
+    result = db.select_data("customers")
+    customers = []
+    for row in result:
+        customers.append({"id": row[0], "name": row[1], "email": row[2]})
+    return jsonify(customers)
 
 
-api.add_resource(CustomerListResource, "/customers")
-api.add_resource(CustomerResource, "/customers/<int:customer_id>")
+@app.route("/customers/<id>", methods=["GET"])
+def get_customer(id):
+    result = db.select_data("customers", "*", f"id={id}")
+    customer = result.fetchone()
+    if customer:
+        return jsonify({"id": customer[0], "name": customer[1], "email": customer[2]})
+    else:
+        return jsonify({"message": "Customer not found"}), 404
+
+
+@app.route("/customers", methods=["POST"])
+def create_customer():
+    data = request.json
+    name = data["name"]
+    email = data["email"]
+
+    db.insert_data("customers", "name, email", (name, email))
+    return jsonify({"message": "Customer created successfully"}), 201
+
+
+@app.route("/customers/<id>", methods=["PUT"])
+def update_customer(id):
+    data = request.json
+    name = data["name"]
+    email = data["email"]
+
+    db.update_data("customers", f"name='{name}', email='{email}'", f"id={id}")
+    return jsonify({"message": "Customer updated successfully"})
+
+
+@app.route("/customers/<id>", methods=["DELETE"])
+def delete_customer(id):
+    db.delete_data("customers", f"id={id}")
+    return jsonify({"message": "Customer deleted successfully"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
